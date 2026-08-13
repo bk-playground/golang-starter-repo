@@ -1,0 +1,52 @@
+name: Unit Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+# concurrency:
+#  group: s3iofs-unit-tests-${{ github.head_ref || github.run_id }}
+#  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Unit Tests
+    strategy:
+      matrix:
+        go-version: ["1.25"]
+        platform: ["ubuntu-latest"]
+
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+      - run: go mod download
+      - run: go build -v .
+
+      - name: Run linters
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: latest
+
+      - name: Install tparse
+        run: go install github.com/mfridman/tparse@latest
+
+      - name: Test
+        env:
+          COVER_OPTS: "-coverprofile=coverage.txt -covermode=atomic"
+          GOFLAGS:  "-v -count=1 -json"
+        run: go test $COVER_OPTS ./... | tparse -all -notests -format markdown >> $GITHUB_STEP_SUMMARY
+
+      - name: Integration Test
+        env:
+          COVER_OPTS: "-coverprofile=coverage.txt -covermode=atomic -coverpkg=github.com/wolfeidau/s3iofs"
+          GOFLAGS:  "-v -count=1 -json"
+        run: go test $COVER_OPTS ./... | tparse -all -notests -format markdown >> $GITHUB_STEP_SUMMARY
+        working-directory: integration

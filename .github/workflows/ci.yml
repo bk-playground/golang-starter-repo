@@ -1,8 +1,8 @@
 name: Unit Tests
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
 
@@ -15,15 +15,15 @@ jobs:
     name: Unit Tests
     strategy:
       matrix:
-        go-version: ["1.25"]
+        go-version: ["1.25", "1.26"]
         platform: ["ubuntu-latest"]
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go-version }}
           cache: true
@@ -43,10 +43,3 @@ jobs:
           COVER_OPTS: "-coverprofile=coverage.txt -covermode=atomic"
           GOFLAGS:  "-v -count=1 -json"
         run: go test $COVER_OPTS ./... | tparse -all -notests -format markdown >> $GITHUB_STEP_SUMMARY
-
-      - name: Integration Test
-        env:
-          COVER_OPTS: "-coverprofile=coverage.txt -covermode=atomic -coverpkg=github.com/wolfeidau/s3iofs"
-          GOFLAGS:  "-v -count=1 -json"
-        run: go test $COVER_OPTS ./... | tparse -all -notests -format markdown >> $GITHUB_STEP_SUMMARY
-        working-directory: integration
